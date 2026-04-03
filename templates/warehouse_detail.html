@@ -22,7 +22,10 @@
 
             <button class="btn text-white fw-bold px-4 shadow-sm" style="background-color: #ff6600;" data-bs-toggle="modal" data-bs-target="#newItemModal">
                 <i class="bi bi-plus-lg me-1"></i> {% trans "Novi Artikal" %}
-            </button>.
+            </button>
+            <button id="printCardsBtn" class="btn btn-outline-primary fw-bold px-4 shadow-sm me-2" style="display: none;">
+                <i class="bi bi-printer me-1"></i> {% trans "Štampaj kartice" %} (<span id="selectedCount">0</span>)
+            </button>
 
             <button class="btn btn-outline-dark fw-bold px-4 shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#quickUpdateModal">
                 <i class="bi bi-arrow-left-right me-1"></i> {% trans "Promeni stanje" %}
@@ -35,6 +38,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light text-muted" style="font-size: 0.8rem;">
+                        <th class="ps-4"><input type="checkbox" id="selectAll" class="form-check-input"></th> <th class="fw-bold text-uppercase">{% trans "Slika" %}</th>
                         <tr>
                             <th class="ps-4 fw-bold text-uppercase">{% trans "Slika" %}</th>
                             <th class="fw-bold text-uppercase">{% trans "ID / Barkod" %}</th>
@@ -50,6 +54,9 @@
                     <tbody>
                         {% for artikal in artikli %}
                         <tr class="{% if artikal.quantity < artikal.min_quantity %}table-danger{% elif artikal.quantity == artikal.min_quantity %}table-warning{% endif %}">
+                            <td class="ps-4">
+                                <input type="checkbox" class="item-checkbox form-check-input" value="{{ artikal.id }}">
+                            </td>
                             <td class="ps-4">
                                 {% if artikal.image %}
                                     <img src="{{ artikal.image.url }}" class="rounded border" style="width: 45px; height: 45px; object-fit: cover;">
@@ -363,6 +370,34 @@ function verifyAdmin(action, itemId) {
         alert("Pogrešna šifra! Pristup odbijen.");
     }
 }
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('item-checkbox') || e.target.id === 'selectAll') {
+        const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+        const printBtn = document.getElementById('printCardsBtn');
+        const countSpan = document.getElementById('selectedCount');
+        
+        if (checkboxes.length > 0) {
+            printBtn.style.display = 'inline-block';
+            countSpan.innerText = checkboxes.length;
+        } else {
+            printBtn.style.display = 'none';
+        }
+    }
+});
+
+// Select All logika
+document.getElementById('selectAll')?.addEventListener('click', function() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+});
+
+// Slanje na štampu
+document.getElementById('printCardsBtn')?.addEventListener('click', function() {
+    const selected = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                          .map(cb => cb.value);
+    const url = "{% url 'print_cards' %}?items=" + selected.join('&items=');
+    window.open(url, '_blank');
+});
 </script>
 
 {% endblock %}
