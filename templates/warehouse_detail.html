@@ -3,103 +3,84 @@
 
 {% block content %}
 <div class="container-fluid">
-    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="fw-bold text-dark mb-1">{% trans "Magacin:" %} {{ magacin.name }}</h3>
-            <p class="text-muted small">{% trans "Pregled zaliha i pozicija za mašinu" %}</p>
+            <p class="text-muted small">{% trans "Pregled zaliha i pozicija" %}</p>
         </div>
-        
-        <div class="d-flex gap-3">
-            <form method="GET" action="{% url 'warehouse_detail' magacin.id %}" class="d-flex gap-2">
-                <div class="input-group shadow-sm" style="width: 300px;">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" name="search" class="form-control border-start-0 ps-0" 
-                           placeholder='{% trans "Pretraži ID ili naziv..." %}' value="{{ query|default:'' }}">
+        <div class="d-flex gap-2">
+            <form method="GET" class="d-flex gap-2">
+                <div class="input-group shadow-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Pretraži ID, naziv, dobavljača..." value="{{ query|default:'' }}">
                 </div>
-                <button type="submit" class="btn btn-light border fw-bold">{% trans "Traži" %}</button>
+                <button type="submit" class="btn btn-light border fw-bold">Traži</button>
             </form>
-
+            <button id="printCardsBtn" class="btn btn-outline-primary fw-bold shadow-sm" style="display: none;">
+                <i class="bi bi-printer"></i> Štampaj (<span id="selectedCount">0</span>)
+            </button>
+            <button class="btn btn-outline-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#quickUpdateModal">Promeni stanje</button>
             <button class="btn text-white fw-bold px-4 shadow-sm" style="background-color: #ff6600;" data-bs-toggle="modal" data-bs-target="#newItemModal">
-                <i class="bi bi-plus-lg me-1"></i> {% trans "Novi Artikal" %}
-            </button>
-            <button id="printCardsBtn" class="btn btn-outline-primary fw-bold px-4 shadow-sm me-2" style="display: none;">
-                <i class="bi bi-printer me-1"></i> {% trans "Štampaj kartice" %} (<span id="selectedCount">0</span>)
-            </button>
-
-            <button class="btn btn-outline-dark fw-bold px-4 shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#quickUpdateModal">
-                <i class="bi bi-arrow-left-right me-1"></i> {% trans "Promeni stanje" %}
+                <i class="bi bi-plus-lg"></i> Novi Artikal
             </button>
         </div>
     </div>
 
     <div class="card border-0 shadow-sm rounded-3">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light text-muted" style="font-size: 0.8rem;">
-                        <th class="ps-4"><input type="checkbox" id="selectAll" class="form-check-input"></th> <th class="fw-bold text-uppercase">{% trans "Slika" %}</th>
-                        <tr>
-                            <th class="ps-4 fw-bold text-uppercase">{% trans "Slika" %}</th>
-                            <th class="fw-bold text-uppercase">{% trans "ID / Barkod" %}</th>
-                            <th class="fw-bold text-uppercase">{% trans "Naziv Dela" %}</th>
-                            <th class="fw-bold text-uppercase">{% trans "Pozicija na mašini" %}</th>
-                            <th class="fw-bold text-uppercase">{% trans "Serijski Broj" %}</th>
-                            <th class="fw-bold text-uppercase">{% trans "Mapa" %}</th>
-                            <th class="text-center fw-bold text-uppercase">{% trans "Min. Kol." %}</th>
-                            <th class="text-center fw-bold text-uppercase">{% trans "Stanje" %}</th>
-                            <th class="text-end pe-4 fw-bold text-uppercase">{% trans "Akcije" %}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for artikal in artikli %}
-                        <tr class="{% if artikal.quantity < artikal.min_quantity %}table-danger{% elif artikal.quantity == artikal.min_quantity %}table-warning{% endif %}">
-                            <td class="ps-4">
-                                <input type="checkbox" class="item-checkbox form-check-input" value="{{ artikal.id }}">
-                            </td>
-                            <td class="ps-4">
-                                {% if artikal.image %}
-                                    <img src="{{ artikal.image.url }}" class="rounded border" style="width: 45px; height: 45px; object-fit: cover;">
-                                {% else %}
-                                    <div class="bg-light rounded border d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
-                                        <i class="bi bi-camera text-muted"></i>
-                                    </div>
-                                {% endif %}
-                            </td>
-                            <td class="fw-bold">{{ artikal.part_id_barcode }}</td>
-                            <td class="fw-bold">{{ artikal.name }}</td>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase fw-bold text-muted">
+                    <tr>
+                        <th class="ps-4"><input type="checkbox" id="selectAll" class="form-check-input"></th>
+                        <th>Slika</th>
+                        <th>ID / Barkod</th>
+                        {% if magacin.warehouse_type == 'belts' %}
+                            <th>Pozicija kaiša</th>
+                            <th>Namena</th>
+                            <th>Tip / Dimenzije</th>
+                        {% else %}
+                            <th>Naziv Dela</th>
+                            <th>Pozicija / Mapa</th>
+                            <th>Serijski Broj</th>
+                            <th>Dobavljač</th>
+                        {% endif %}
+                        <th class="text-center">Min. Kol.</th>
+                        <th class="text-center">Stanje</th>
+                        <th class="text-end pe-4">Akcije</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for artikal in artikli %}
+                    <tr class="{% if artikal.quantity < artikal.min_quantity %}table-danger{% elif artikal.quantity == artikal.min_quantity %}table-warning{% endif %}">
+                        <td class="ps-4"><input type="checkbox" class="item-checkbox form-check-input" value="{{ artikal.id }}"></td>
+                        <td>
+                            {% if artikal.image %}<img src="{{ artikal.image.url }}" class="rounded border" style="width: 45px; height: 45px; object-fit: cover;">
+                            {% else %}<div class="bg-light rounded border d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;"><i class="bi bi-camera text-muted"></i></div>{% endif %}
+                        </td>
+                        <td class="fw-bold">{{ artikal.part_id_barcode }}</td>
+                        {% if magacin.warehouse_type == 'belts' %}
                             <td>{{ artikal.position_on_machine|default:"/" }}</td>
-                            <td class="text-muted">{{ artikal.serial_number|default:"/" }}</td>
-                            <td>
-                                {% if artikal.map_position %}
-                                    <span class="badge bg-light text-dark border">{{ artikal.map_position }}</span>
-                                {% else %}
-                                    <span class="text-muted small">/</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center fw-bold">{{ artikal.min_quantity }}</td>
-                            <td class="text-center">
-                                <span class="badge {% if artikal.quantity < artikal.min_quantity %}bg-danger{% elif artikal.quantity == artikal.min_quantity %}bg-warning text-dark{% else %}bg-white text-dark border{% endif %} fs-6 px-3">
-                                    {{ artikal.quantity }}
-                                </span>
-                            </td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-light border fw-bold" data-bs-toggle="modal" data-bs-target="#viewItemModal{{ artikal.id }}">
-                                    <i class="bi bi-eye-fill"></i> {% trans "View" %}
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="9" class="text-center py-5 text-muted">
-                                <i class="bi bi-box-seam d-block fs-1 mb-2"></i>
-                                {% trans "Nema pronađenih artikala." %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            <td>{{ artikal.belt_purpose|default:"/" }}</td>
+                            <td>{{ artikal.belt_type|default:"" }} | {{ artikal.dimensions|default:"" }}</td>
+                        {% else %}
+                            <td class="fw-bold">{{ artikal.name }}</td>
+                            <td>{{ artikal.position_on_machine|default:"/" }} <br><small class="badge bg-light text-dark border">{{ artikal.map_position }}</small></td>
+                            <td class="text-muted small">{{ artikal.serial_number|default:"/" }}</td>
+                            <td class="text-primary small fw-bold">{{ artikal.supplier|default:"/" }}</td>
+                        {% endif %}
+                        <td class="text-center fw-bold text-muted">{{ artikal.min_quantity }}</td>
+                        <td class="text-center">
+                            <span class="badge {% if artikal.quantity < artikal.min_quantity %}bg-danger{% elif artikal.quantity == artikal.min_quantity %}bg-warning text-dark{% else %}bg-white text-dark border{% endif %} fs-6 px-3">
+                                {{ artikal.quantity }} {{ artikal.unit_of_measure }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm btn-light border fw-bold" data-bs-toggle="modal" data-bs-target="#viewItemModal{{ artikal.id }}">View</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -107,7 +88,7 @@
 <div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header border-bottom-0 pt-4 px-4">
+            <div class="modal-header border-0 pt-4 px-4">
                 <h5 class="modal-title fw-bold">{% trans "Dodaj Novi Artikal" %}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -116,50 +97,209 @@
                 <div class="modal-body px-4">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "ID / Barkod" %}</label>
+                            <label class="form-label small fw-bold text-muted">ID / BARKOD</label>
                             <input type="text" name="part_id_barcode" class="form-control bg-light border-0" required>
                         </div>
+                        
+                        {% if magacin.warehouse_type == 'belts' %}
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">POZICIJA KAIŠA</label><input type="text" name="position_on_machine" class="form-control bg-light border-0"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">NAMENA</label><input type="text" name="belt_purpose" class="form-control bg-light border-0"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">TIP KAIŠA</label><input type="text" name="belt_type" class="form-control bg-light border-0"></div>
+                            <div class="col-md-4"><label class="form-label small fw-bold text-muted">DEBLJINA/ZUBI</label><input type="text" name="thickness_teeth" class="form-control bg-light border-0"></div>
+                            <div class="col-md-4"><label class="form-label small fw-bold text-muted">DIMENZIJE</label><input type="text" name="dimensions" class="form-control bg-light border-0"></div>
+                            <div class="col-md-4"><label class="form-label small fw-bold text-muted">OTV/ZATV</label>
+                                <select name="open_closed" class="form-select bg-light border-0">
+                                    <option value="OTV">OTV</option><option value="ZATV">ZATV</option>
+                                </select>
+                            </div>
+                        {% else %}
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">NAZIV DELA</label><input type="text" name="name" class="form-control bg-light border-0"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">POZICIJA NA MAŠINI</label><input type="text" name="position_on_machine" class="form-control bg-light border-0"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">SERIJSKI BROJ</label><input type="text" name="serial_number" class="form-control bg-light border-0"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold text-muted">MAPA</label><input type="text" name="map_position" class="form-control bg-light border-0"></div>
+                        {% endif %}
+
+                        <div class="col-md-3"><label class="form-label small fw-bold text-muted">KOLIČINA</label><input type="number" step="0.1" name="quantity" class="form-control bg-light border-0" value="0"></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">JEDINICA</label>
+                            <select name="unit_of_measure" class="form-select bg-light border-0">
+                                <option value="kom">PCS</option><option value="m">Metar</option><option value="l">Litar</option><option value="kg">kg</option><option value="set">SET</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label small fw-bold text-muted">MIN. KOL.</label><input type="number" step="0.1" name="min_quantity" class="form-control bg-light border-0" value="1"></div>
+                        <div class="col-md-3"><label class="form-label small fw-bold text-muted">CENA (EUR)</label><input type="number" step="0.01" name="price" class="form-control bg-light border-0" value="0.00"></div>
+                        <div class="col-md-12"><label class="form-label small fw-bold text-muted">DOBAVLJAČ</label><input type="text" name="supplier" class="form-control bg-light border-0"></div>
+                        <div class="col-12"><label class="form-label small fw-bold text-muted">SLIKA ARTIKLA</label><input type="file" name="image" class="form-control bg-light border-0"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pb-4">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Odustani</button>
+                    <button type="submit" class="btn text-white fw-bold px-5" style="background-color: #ff6600;">Sačuvaj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="quickUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold">{% trans "Brza promena stanja" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'update_stock' magacin.id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">SKENIRAJ ILI UNESI ID / BARKOD</label>
+                        <input type="text" name="barcode" class="form-control bg-light border-0" required autofocus>
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Naziv Dela" %}</label>
-                            <input type="text" name="name" class="form-control bg-light border-0" required>
+                            <label class="form-label small fw-bold text-muted">AKCIJA</label>
+                            <select name="mode" class="form-select bg-light border-0">
+                                <option value="plus">{% trans "Dodaj (+)" %}</option>
+                                <option value="minus">{% trans "Skini (-)" %}</option>
+                            </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Pozicija na mašini" %}</label>
-                            <input type="text" name="position_on_machine" class="form-control bg-light border-0">
+                            <label class="form-label small fw-bold text-muted">KOLIČINA (PCS/m)</label>
+                            <input type="number" step="any" name="amount" class="form-control bg-light border-0" value="1" min="0.1">
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">RAZLOG PROMENE</label>
+                        <select name="reason" class="form-select bg-light border-0" required>
+                            <option value="" selected disabled>-- {% trans "Odaberi razlog" %} --</option>
+                            <option value="Nova nabavka">{% trans "Nova nabavka (Prijemnica)" %}</option>
+                            <option value="Povrat sa mašine">{% trans "Povrat ispravnog dela sa mašine" %}</option>
+                            <option value="Zamena dela">{% trans "Redovna zamena (Servis)" %}</option>
+                            <option value="Kvar/Havarija">{% trans "Vanredna popravka" %}</option>
+                            <option value="Testiranje">{% trans "Testiranje/Proba" %}</option>
+                            <option value="Otpis">{% trans "Lom / Neispravno (Otpis)" %}</option>
+                            <option value="Inventar">{% trans "Korekcija stanja (Popis)" %}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+                        {% trans "Potvrdi promenu" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold">
+                    {% if magacin.warehouse_type == 'belts' %}
+                        <i class="bi bi-gear-wide"></i> {% trans "Novi Kaiš" %}
+                    {% else %}
+                        <i class="bi bi-box-seam"></i> {% trans "Novi Rezervni Deo" %}
+                    {% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'warehouse_detail' magacin.id %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body px-4">
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Serijski Broj" %}</label>
-                            <input type="text" name="serial_number" class="form-control bg-light border-0">
+                            <label class="form-label small fw-bold text-muted">ID / BARKOD</label>
+                            <input type="text" name="part_id_barcode" class="form-control bg-light border-0" required placeholder="Npr. KAIS-001">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Mapa" %}</label>
-                            <input type="text" name="map_position" class="form-control bg-light border-0">
+
+                        {% if magacin.warehouse_type == 'belts' %}
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">POZICIJA KAIŠA</label>
+                                <input type="text" name="position_on_machine" class="form-control bg-light border-0" placeholder="Mašina / Sekcija">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">NAMENA</label>
+                                <input type="text" name="belt_purpose" class="form-control bg-light border-0" placeholder="Npr. Pogon valjaka">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">TIP KAIŠA</label>
+                                <input type="text" name="belt_type" class="form-control bg-light border-0" placeholder="Npr. Zupčasti / Rebrasti">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">DEBLJINA / ZUBI</label>
+                                <input type="text" name="thickness_teeth" class="form-control bg-light border-0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">DIMENZIJE</label>
+                                <input type="text" name="dimensions" class="form-control bg-light border-0" placeholder="Npr. 25x1200">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">OTV / ZATV</label>
+                                <select name="open_closed" class="form-select bg-light border-0">
+                                    <option value="OTV">OTV (Otvoreni)</option>
+                                    <option value="ZATV">ZATV (Zatvoreni)</option>
+                                </select>
+                            </div>
+                        {% else %}
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">NAZIV DELA</label>
+                                <input type="text" name="name" class="form-control bg-light border-0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">POZICIJA NA MAŠINI</label>
+                                <input type="text" name="position_on_machine" class="form-control bg-light border-0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">SERIJSKI BROJ</label>
+                                <input type="text" name="serial_number" class="form-control bg-light border-0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">MAPA (POLICA)</label>
+                                <input type="text" name="map_position" class="form-control bg-light border-0">
+                            </div>
+                        {% endif %}
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">KOLIČINA</label>
+                            <input type="number" step="0.01" name="quantity" class="form-control bg-light border-0" value="0">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Trenutna Količina" %}</label>
-                            <input type="number" name="quantity" class="form-control bg-light border-0" value="0">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">JEDINICA</label>
+                            <select name="unit_of_measure" class="form-select bg-light border-0">
+                                <option value="kom">PCS (Kom)</option>
+                                <option value="m">m (Metar)</option>
+                                <option value="set">SET</option>
+                                <option value="l">l (Litar)</option>
+                            </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Minimalna Količina" %}</label>
-                            <input type="number" name="min_quantity" class="form-control bg-light border-0" value="1">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">MIN. KOL.</label>
+                            <input type="number" step="0.01" name="min_quantity" class="form-control bg-light border-0" value="1">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Dobavljač" %}</label>
-                            <input type="text" name="supplier" class="form-control bg-light border-0">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Cena (EUR)" %}</label>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">CENA (EUR)</label>
                             <input type="number" step="0.01" name="price" class="form-control bg-light border-0" value="0.00">
                         </div>
+                        
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted">DOBAVLJAČ</label>
+                            <input type="text" name="supplier" class="form-control bg-light border-0">
+                        </div>
+
                         <div class="col-12">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Slika Artikla" %}</label>
+                            <label class="form-label small fw-bold text-muted">SLIKA ARTIKLA</label>
                             <input type="file" name="image" class="form-control bg-light border-0">
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pb-4 px-4">
-                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">{% trans "Odustani" %}</button>
-                    <button type="submit" class="btn fw-bold text-white px-4" style="background-color: #ff6600;">{% trans "Sačuvaj" %}</button>
+                <div class="modal-footer border-0 pb-4">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Odustani</button>
+                    <button type="submit" class="btn text-white fw-bold px-5 shadow-sm" style="background-color: #ff6600;">
+                        Sačuvaj Artikal
+                    </button>
                 </div>
             </form>
         </div>
@@ -187,37 +327,28 @@
                     </div>
                     <div class="col-md-7 ps-4">
                         <div class="row g-4">
-                            <div class="col-6">
-                                <label class="small text-muted text-uppercase fw-bold">{% trans "Naziv" %}</label>
-                                <p class="fs-5 fw-bold">{{ artikal.name }}</p>
-                            </div>
-                            <div class="col-6">
-                                <label class="small text-muted text-uppercase fw-bold">{% trans "Mapa" %}</label>
-                                <p class="fs-5"><span class="badge bg-primary">{{ artikal.map_position|default:"/" }}</span></p>
-                            </div>
-                            <div class="col-6">
-                                <label class="small text-muted text-uppercase fw-bold">{% trans "Pozicija na mašini" %}</label>
-                                <p>{{ artikal.position_on_machine|default:"/" }}</p>
-                            </div>
-                            <div class="col-6">
-                                <label class="small text-muted text-uppercase fw-bold">{% trans "Serijski broj" %}</label>
-                                <p>{{ artikal.serial_number|default:"/" }}</p>
-                            </div>
-                            <div class="col-6 border-top pt-3">
-                                <label class="small text-muted text-uppercase fw-bold">{% trans "Dobavljač" %}</label>
-                                <p class="fw-bold text-primary">{{ artikal.supplier|default:"/" }}</p>
-                            </div>
-                            <div class="col-6 border-top pt-3">
-                                <label class="small text-muted text-uppercase fw-bold">{% trans "Cena" %}</label>
-                                <p class="fw-bold">{{ artikal.price }} EUR</p>
-                            </div>
-                            <div class="col-12 bg-light p-3 rounded d-flex justify-content-between align-items-center mt-4">
+                            {% if magacin.warehouse_type == 'belts' %}
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Namena</label><p class="fs-5 fw-bold">{{ artikal.belt_purpose|default:"/" }}</p></div>
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Tip kaiša</label><p class="fs-5">{{ artikal.belt_type|default:"/" }}</p></div>
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Dimenzije</label><p class="fw-bold text-primary">{{ artikal.dimensions|default:"/" }}</p></div>
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Debljina/Zubi</label><p>{{ artikal.thickness_teeth|default:"/" }}</p></div>
+                            {% else %}
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Naziv</label><p class="fs-5 fw-bold">{{ artikal.name }}</p></div>
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Mapa</label><p><span class="badge bg-primary px-3">{{ artikal.map_position|default:"/" }}</span></p></div>
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Pozicija mašine</label><p>{{ artikal.position_on_machine|default:"/" }}</p></div>
+                                <div class="col-6"><label class="small text-muted fw-bold text-uppercase">Serijski broj</label><p>{{ artikal.serial_number|default:"/" }}</p></div>
+                            {% endif %}
+
+                            <div class="col-6 border-top pt-3"><label class="small text-muted fw-bold text-uppercase">Dobavljač</label><p class="fw-bold text-primary">{{ artikal.supplier|default:"/" }}</p></div>
+                            <div class="col-6 border-top pt-3"><label class="small text-muted fw-bold text-uppercase">Cena</label><p class="fw-bold">{{ artikal.price }} EUR</p></div>
+                            
+                            <div class="col-12 bg-light p-3 rounded d-flex justify-content-between align-items-center mt-4 border">
                                 <div>
-                                    <label class="small text-muted text-uppercase fw-bold d-block">{% trans "Trenutno stanje" %}</label>
-                                    <span class="fs-2 fw-bold text-dark">{{ artikal.quantity }}</span>
+                                    <label class="small text-muted fw-bold text-uppercase d-block">Trenutno stanje</label>
+                                    <span class="fs-2 fw-bold text-dark">{{ artikal.quantity }} {{ artikal.unit_of_measure }}</span>
                                 </div>
                                 <div class="text-end">
-                                    <label class="small text-muted text-uppercase fw-bold d-block">{% trans "Min. Količina" %}</label>
+                                    <label class="small text-muted fw-bold text-uppercase d-block">Min. Količina</label>
                                     <span class="fs-4">{{ artikal.min_quantity }}</span>
                                 </div>
                             </div>
@@ -226,122 +357,32 @@
                 </div>
             </div>
             <div class="modal-footer bg-light border-0">
-                <button class="btn btn-outline-danger me-auto fw-bold" onclick="verifyAdmin('delete', {{ artikal.id }})">
-                    <i class="bi bi-trash"></i> {% trans "Obriši" %}
-                </button>
-                <button class="btn btn-dark fw-bold px-4" onclick="verifyAdmin('edit', {{ artikal.id }})">
-                    <i class="bi bi-pencil-square"></i> {% trans "Uredi" %}
-                </button>
+                <button class="btn btn-outline-danger me-auto fw-bold" onclick="verifyAdmin('delete', {{ artikal.id }})">{% trans "Obriši" %}</button>
+                <button class="btn btn-dark fw-bold px-4" onclick="verifyAdmin('edit', {{ artikal.id }})">{% trans "Uredi" %}</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="quickUpdateModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header">
-                <h5 class="fw-bold">{% trans "Brza promena stanja" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="{% url 'update_stock' magacin.id %}" method="POST">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">{% trans "Skeniraj ili unesi ID / Barkod" %}</label>
-                        <input type="text" name="barcode" class="form-control bg-light border-0" required autofocus>
-                    </div>
-                    
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">{% trans "Akcija" %}</label>
-                            <select name="mode" class="form-select bg-light border-0">
-                                <option value="plus">{% trans "Dodaj (+)" %}</option>
-                                <option value="minus">{% trans "Skini (-)" %}</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold">{% trans "Količina" %}</label>
-                            <input type="number" name="amount" class="form-control bg-light border-0" value="1" min="1">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">{% trans "Razlog promene" %}</label>
-                        <select name="reason" class="form-select bg-light border-0" required>
-                            <option value="" selected disabled>-- {% trans "Odaberi razlog" %} --</option>
-                            <option value="Nova nabavka">{% trans "Nova nabavka (Prijemnica)" %}</option>
-                            <option value="Povrat sa mašine">{% trans "Povrat ispravnog dela sa mašine" %}</option>
-                            
-                            <option value="Zamena dela">{% trans "Redovna zamena (Servis)" %}</option>
-                            <option value="Kvar/Havarija">{% trans "Vanredna popravka" %}</option>
-                            <option value="Testiranje">{% trans "Testiranje/Proba" %}</option>
-                            
-                            <option value="Otpis">{% trans "Lom / Neispravno (Otpis)" %}</option>
-                            <option value="Inventar">{% trans "Korekcija stanja (Popis)" %}</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="submit" class="btn btn-primary w-100 fw-bold">{% trans "Potvrdi promenu" %}</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 <div class="modal fade" id="editItemModal{{ artikal.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header border-bottom-0">
-                <h5 class="modal-title fw-bold">{% trans "Izmeni artikal" %}: {{ artikal.part_id_barcode }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header"><h5 class="fw-bold">{% trans "Izmeni" %}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <form action="{% url 'edit_item' artikal.id %}" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body px-4">
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "ID / Barkod" %}</label>
-                            <input type="text" name="part_id_barcode" class="form-control bg-light" value="{{ artikal.part_id_barcode }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Naziv Dela" %}</label>
-                            <input type="text" name="name" class="form-control bg-light" value="{{ artikal.name }}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Pozicija na mašini" %}</label>
-                            <input type="text" name="position_on_machine" class="form-control bg-light" value="{{ artikal.position_on_machine|default:'' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Serijski Broj" %}</label>
-                            <input type="text" name="serial_number" class="form-control bg-light" value="{{ artikal.serial_number|default:'' }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Mapa" %}</label>
-                            <input type="text" name="map_position" class="form-control bg-light" value="{{ artikal.map_position|default:'' }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Stanje" %}</label>
-                            <input type="number" name="quantity" class="form-control bg-light" value="{{ artikal.quantity }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Min. Količina" %}</label>
-                            <input type="number" name="min_quantity" class="form-control bg-light" value="{{ artikal.min_quantity }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Dobavljač" %}</label>
-                            <input type="text" name="supplier" class="form-control bg-light" value="{{ artikal.supplier|default:'' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase">{% trans "Cena (EUR)" %}</label>
-                            <input type="number" step="0.01" name="price" class="form-control bg-light" value="{{ artikal.price|stringformat:'.2f' }}">
-                        </div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">{% trans "ID / Barkod" %}</label><input type="text" name="part_id_barcode" class="form-control bg-light" value="{{ artikal.part_id_barcode }}"></div>
+                        {% if magacin.warehouse_type == 'belts' %}
+                            <div class="col-md-6"><label class="form-label small fw-bold">{% trans "Namena" %}</label><input type="text" name="belt_purpose" class="form-control bg-light" value="{{ artikal.belt_purpose|default:'' }}"></div>
+                            <div class="col-md-6"><label class="form-label small fw-bold">{% trans "Dimenzije" %}</label><input type="text" name="dimensions" class="form-control bg-light" value="{{ artikal.dimensions|default:'' }}"></div>
+                        {% else %}
+                            <div class="col-md-6"><label class="form-label small fw-bold">{% trans "Naziv" %}</label><input type="text" name="name" class="form-control bg-light" value="{{ artikal.name }}"></div>
+                        {% endif %}
+                        <div class="col-md-4"><label class="form-label small fw-bold">{% trans "Stanje" %}</label><input type="number" name="quantity" class="form-control bg-light" value="{{ artikal.quantity }}"></div>
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">{% trans "Odustani" %}</button>
-                    <button type="submit" class="btn btn-dark fw-bold px-4">{% trans "Sačuvaj izmene" %}</button>
-                </div>
+                <div class="modal-footer border-0"><button type="submit" class="btn btn-dark fw-bold px-4">{% trans "Sačuvaj" %}</button></div>
             </form>
         </div>
     </div>
@@ -350,53 +391,33 @@
 
 <script>
 function verifyAdmin(action, itemId) {
-    let password = prompt("Ova akcija zahteva ADMIN verifikaciju. Unesite šifru:");
-    
+    let password = prompt("{% trans 'Unesite ADMIN šifru:' %}");
     if (password === "1234") { 
         if (action === 'delete') {
-            if (confirm("Da li ste sigurni da želite da trajno obrišete ovaj artikal?")) {
-                window.location.href = "/obrisi-artikal/" + itemId + "/";
-            }
+            if (confirm("{% trans 'Obrisati trajno?' %}")) window.location.href = "/obrisi-artikal/" + itemId + "/";
         } else if (action === 'edit') {
-            // Zatvaramo View Modal
-            let viewModal = bootstrap.Modal.getInstance(document.getElementById('viewItemModal' + itemId));
-            if (viewModal) viewModal.hide();
-            
-            // Otvaramo Edit Modal
-            let editModal = new bootstrap.Modal(document.getElementById('editItemModal' + itemId));
-            editModal.show();
+            bootstrap.Modal.getInstance(document.getElementById('viewItemModal' + itemId)).hide();
+            new bootstrap.Modal(document.getElementById('editItemModal' + itemId)).show();
         }
-    } else {
-        alert("Pogrešna šifra! Pristup odbijen.");
-    }
+    } else { alert("{% trans 'Pogrešna šifra!' %}"); }
 }
+
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('item-checkbox') || e.target.id === 'selectAll') {
         const checkboxes = document.querySelectorAll('.item-checkbox:checked');
         const printBtn = document.getElementById('printCardsBtn');
-        const countSpan = document.getElementById('selectedCount');
-        
-        if (checkboxes.length > 0) {
-            printBtn.style.display = 'inline-block';
-            countSpan.innerText = checkboxes.length;
-        } else {
-            printBtn.style.display = 'none';
-        }
+        document.getElementById('selectedCount').innerText = checkboxes.length;
+        printBtn.style.display = checkboxes.length > 0 ? 'inline-block' : 'none';
     }
 });
 
-// Select All logika
 document.getElementById('selectAll')?.addEventListener('click', function() {
-    const checkboxes = document.querySelectorAll('.item-checkbox');
-    checkboxes.forEach(cb => cb.checked = this.checked);
+    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = this.checked);
 });
 
-// Slanje na štampu
 document.getElementById('printCardsBtn')?.addEventListener('click', function() {
-    const selected = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                          .map(cb => cb.value);
-    const url = "{% url 'print_cards' %}?items=" + selected.join('&items=');
-    window.open(url, '_blank');
+    const selected = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+    window.open("{% url 'print_cards' %}?items=" + selected.join('&items='), '_blank');
 });
 </script>
 
