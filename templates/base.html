@@ -1,0 +1,117 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mondi WMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        /* Svetla tema sa Mondi NARANDŽASTIM detaljima */
+        body { background-color: #f3f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #3f4254; }
+        .sidebar { height: 100vh; background-color: #ffffff; border-right: 1px solid #e4e6ef; overflow-y: auto; }
+        .brand-logo { color: #181c32; font-size: 1.5rem; font-weight: 700; padding: 25px 20px; border-bottom: 1px solid #e4e6ef; margin-bottom: 20px; }
+        .nav-link { color: #3f4254; padding: 10px 20px; border-radius: 6px; margin: 2px 15px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; transition: 0.3s; }
+        .nav-link:hover, .nav-link.active { background-color: #fff3eb; color: #ff6600; }
+        .nav-link i.main-icon { margin-right: 10px; font-size: 1.2rem; color: #b5b5c3; }
+        .nav-link:hover i.main-icon, .nav-link.active i.main-icon { color: #ff6600; } 
+        .submenu { background-color: transparent; margin-left: 15px; border-left: 1px solid #e4e6ef; padding-left: 10px; }
+        .submenu .nav-link { font-size: 0.95rem; padding: 8px 15px; }
+        .top-navbar { background-color: #ffffff; padding: 15px 30px; border-bottom: 1px solid #e4e6ef; }
+        .main-content { padding: 30px; }
+        .text-mondi { color: #ff6600 !important; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid p-0">
+    <div class="d-flex">
+        
+        <nav class="sidebar flex-shrink-0 position-fixed" style="width: 260px;">
+            <div class="brand-logo">
+                <i class="bi bi-box-fill text-mondi"></i> MONDI WMS
+            </div>
+
+            <ul class="nav flex-column mb-auto">
+                <li class="nav-item">
+                    <a href="{% url 'dashboard' %}" class="nav-link active">
+                        <div><i class="bi bi-grid-1x2-fill main-icon"></i> {% trans "Dashboard" %}</div>
+                    </a>
+                </li>
+
+                <li class="nav-item mt-3 mb-1 px-4 text-uppercase" style="font-size: 0.75rem; color: #b5b5c3; font-weight: 700;">
+                    {% trans "Glavni Magacini" %}
+                </li>
+
+                <li class="nav-item">
+                    <a href="#partsMenu" class="nav-link" data-bs-toggle="collapse" aria-expanded="false">
+                        <div><i class="bi bi-gear-fill main-icon"></i> {% trans "Rezervni Delovi" %}</div>
+                        <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+                    </a>
+                    <div class="collapse submenu" id="partsMenu">
+                        <ul class="nav flex-column">
+                            {% for magacin in parts_warehouses %}
+                                <li><a href="{% url 'warehouse_detail' id=magacin.id %}" class="nav-link"><i class="bi bi-dot"></i> {{ magacin.name }}</a></li>
+                            {% empty %}
+                                <li><span class="nav-link text-muted ms-3" style="font-size: 0.85rem;">{% trans "Nema magacina" %}</span></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </li>
+
+                <li class="nav-item">
+                    <a href="#beltsMenu" class="nav-link" data-bs-toggle="collapse" aria-expanded="false">
+                        <div><i class="bi bi-usb-drive-fill main-icon"></i> {% trans "Kaiševi" %}</div>
+                        <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+                    </a>
+                    <div class="collapse submenu" id="beltsMenu">
+                        <ul class="nav flex-column">
+                            {% for magacin in belts_warehouses %}
+                                <li><a href="{% url 'warehouse_detail' id=magacin.id %}" class="nav-link"><i class="bi bi-dot"></i> {{ magacin.name }}</a></li>
+                            {% empty %}
+                                <li><span class="nav-link text-muted ms-3" style="font-size: 0.85rem;">{% trans "Nema magacina" %}</span></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="flex-grow-1" style="margin-left: 260px;">
+            
+            <header class="top-navbar d-flex justify-content-between align-items-center sticky-top">
+                <h4 class="mb-0 fw-bold" style="color: #181c32;">{% trans "Pregled Aplikacije" %}</h4>
+                <div class="d-flex align-items-center gap-3">
+                    
+                    <div class="dropdown me-3">
+                        <button class="btn btn-sm btn-light border dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown">
+                            🇷🇸 SR
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: 100px;">
+                            <li><a class="dropdown-item fw-bold" href="#">🇬🇧 EN</a></li>
+                            <li><a class="dropdown-item fw-bold" href="#">🇷🇸 SR</a></li>
+                        </ul>
+                    </div>
+
+                    <i class="bi bi-search fs-5 text-muted" style="cursor: pointer;"></i>
+                    <i class="bi bi-bell fs-5 text-muted" style="cursor: pointer;"></i>
+                    <div class="d-flex align-items-center gap-2 ms-3" style="cursor: pointer;">
+                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=ff6600&color=fff" class="rounded" width="35" height="35" alt="User">
+                        <span class="fw-bold fs-6" style="color: #3f4254;">Admin</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="main-content">
+                {% block content %}{% endblock %}
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
